@@ -1,0 +1,43 @@
+# Operating systems and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+*release*.properties
+google-services.json
+*firebase-adminsdk*.json
+*service-account*.json
+
+# JavaScript / TypeScript
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+
+# Android
+**/.gradle/
+**/local.properties
+**/build/
+**/captures/
+**/.cxx/
+*.apk
+*.aab
+
+# Runtime data
+*.log
+*.pid
+*.db
+*.db-journal
+.spotfix-role-devices

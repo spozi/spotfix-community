@@ -1,0 +1,387 @@
+// Prisma schema — SpotFix Community multi-tenant Postgres model.
+// ADR 0003: every domain table carries `tenantId` (single-DB discriminator).
+// ADR 0006: tenant scoping enforced by Prisma client extension (see infra/prisma.ts).
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+
+  users              UserAccount[]
+  masters            MasterUser[]
+  cleaners           Cleaner[]
+  devices            DeviceRegistration[]
+  reports            Report[]
+  notificationEvents NotificationEvent[]
+  reportSequence ReportSequence?
+  // v2 (android_v2 + api_v2)
+  devicesV2       DeviceV2[]
+  deviceSessions  DeviceSession[]
+  userRolesV2     UserRoleV2[]
+  reportsV2       ReportV2[]
+  reportAttachmentsV2 ReportAttachmentV2[]
+  reportEventsV2  ReportEventV2[]
+  notificationsV2 NotificationV2[]
+  geoV2           TenantGeoV2?
+  landmarksV2     CampusLandmarkV2[]
+}
+
+model ReportSequence {
+  tenantId      String @id
+  tenant        Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  currentNumber Int    @default(99999)
+}
+
+model UserAccount {
+  id             String    @id @default(cuid())
+  tenantId       String
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name           String
+  idNumber       String
+  phone          String?
+  workLocation   String?
+  // Nullable: Google-only users don't have a local password (P4).
+  passwordHash   String?
+  // P4: Google Sign-In identity. `googleSub` is Google's stable subject id;
+  // `email` is the verified Google email (used for first-time linking).
+  googleSub      String?
+  email          String?
+  role           String
+  verified       Boolean   @default(true)
+  status         String    @default("active")
+  registeredAt   DateTime  @default(now())
+  lastLoginAt    DateTime?
+  loginCount     Int       @default(0)
+  sessionVersion Int       @default(0)
+  devices        DeviceRegistration[]
+  notificationEvents NotificationEvent[]
+  // v2
+  devicesV2      DeviceV2[]      @relation("DeviceV2User")
+  deviceSessions DeviceSession[] @relation("DeviceSessionUser")
+  rolesV2        UserRoleV2[]    @relation("UserRoleV2User")
+  reportsV2          ReportV2[]          @relation("ReportV2Reporter")
+  supervisedReportsV2 ReportV2[]         @relation("ReportV2Supervisor")
+  cleanerReportsV2   ReportV2[]          @relation("ReportV2Cleaner")
+  reportAttachmentsV2 ReportAttachmentV2[] @relation("ReportAttachmentV2Uploader")
+  reportEventsV2     ReportEventV2[]     @relation("ReportEventV2Actor")
+  notificationsV2    NotificationV2[]    @relation("NotificationV2User")
+
+  @@unique([tenantId, idNumber])
+  @@unique([tenantId, googleSub])
+  @@unique([tenantId, email])
+  @@index([tenantId, role])
+}
+
+model DeviceRegistration {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId               String?
+  user                 UserAccount? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  masterUserId         String?
+  masterUser           MasterUser? @relation(fields: [masterUserId], references: [id], onDelete: Cascade)
+  platform             String   @default("android")
+  token                String
+  appVersion           String?
+  deviceId             String?
+  deviceName           String?
+  notificationsEnabled Boolean  @default(true)
+  lastSeenAt           DateTime @default(now())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([tenantId, token])
+  @@index([tenantId, userId, platform])
+  @@index([tenantId, masterUserId, platform])
+}
+
+model MasterUser {
+  id             String    @id @default(cuid())
+  tenantId       String
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  username       String
+  passwordHash   String
+  name           String
+  createdAt      DateTime  @default(now())
+  lastLoginAt    DateTime?
+  sessionVersion Int       @default(0)
+  devices        DeviceRegistration[]
+  notificationEvents NotificationEvent[]
+
+  @@unique([tenantId, username])
+}
+
+model Cleaner {
+  id             String    @id @default(cuid())
+  tenantId       String
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name           String
+  workId         String
+  phone          String?
+  workLocation   String?
+  supervisorId   String?
+  supervisorName String?
+  assignedTaskId String?
+  busyUntil      DateTime?
+
+  @@index([tenantId, supervisorId])
+  @@index([tenantId, assignedTaskId])
+}
+
+model Report {
+  id                       String   @id @default(cuid())
+  tenantId                 String
+  tenant                   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  publicId                 String
+  status                   String   @default("Submitted")
+  timestamp                DateTime @default(now())
+  priority                 String   @default("Medium")
+  category                 String?
+  location                 String?
+  details                  String?
+  coordinates              Json?
+  reporterPhone            String?
+  userId                   String
+  userName                 String?
+  assignedTo               String?
+  assignedToCleanerId      String?
+  assignedBySupervisorId   String?
+  assignedBySupervisorName String?
+  evidencePhoto            String?  @db.Text
+  photos                   Json     @default("[]")
+  resolutionPhoto          String?  @db.Text
+  photoTimestamp           String?
+  resolutionTimestamp      String?
+  resolutionCoordinates    Json?
+  resolutionDistanceMeters Float?
+  reviewedAt               String?
+  reviewedBySupervisorId   String?
+  reviewedBySupervisorName String?
+  reviewNotes              String? @db.Text
+
+  @@unique([tenantId, publicId])
+  @@index([tenantId, userId, timestamp(sort: Desc)])
+  @@index([tenantId, status, timestamp(sort: Desc)])
+}
+
+model NotificationEvent {
+  id            String    @id @default(cuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId        String?
+  user          UserAccount? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  masterUserId  String?
+  masterUser    MasterUser? @relation(fields: [masterUserId], references: [id], onDelete: Cascade)
+  reportPublicId String?
+  type          String
+  title         String
+  body          String   @db.Text
+  payload       Json     @default("{}")
+  isCritical    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([tenantId, userId, createdAt(sort: Desc)])
+  @@index([tenantId, masterUserId, createdAt(sort: Desc)])
+  @@index([tenantId, reportPublicId, createdAt(sort: Desc)])
+}
+
+// =========================================================================
+// API v2 / Android v2 models (android_v2_api_v2.md)
+// Coexist with the v1 schema above; tenant-scoped via the Prisma extension.
+// =========================================================================
+
+model DeviceV2 {
+  id                    String   @id @default(cuid())
+  tenantId              String
+  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId                String?
+  user                  UserAccount? @relation("DeviceV2User", fields: [userId], references: [id], onDelete: SetNull)
+  platform              String   @default("android")
+  deviceName            String?
+  deviceFingerprintHash String
+  fcmToken              String?
+  appVersion            String?
+  osVersion             String?
+  isActive              Boolean  @default(true)
+  lastSeenAt            DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  sessions              DeviceSession[]
+
+  @@unique([tenantId, deviceFingerprintHash])
+  @@index([tenantId, userId])
+}
+
+model DeviceSession {
+  id               String    @id @default(cuid())
+  tenantId         String
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deviceId         String
+  device           DeviceV2  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  userId           String
+  user             UserAccount @relation("DeviceSessionUser", fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String
+  isActive         Boolean   @default(true)
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  lastUsedAt       DateTime  @default(now())
+
+  @@index([tenantId, deviceId, isActive])
+  @@index([tenantId, userId, isActive])
+}
+
+model UserRoleV2 {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String
+  user      UserAccount @relation("UserRoleV2User", fields: [userId], references: [id], onDelete: Cascade)
+  // reporter | supervisor | cleaner | admin
+  role      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, userId, role])
+  @@index([tenantId, role])
+}
+
+// ---- Reports / events / notifications (Stage 2) -------------------------
+
+model ReportV2 {
+  id                    String   @id @default(cuid())
+  tenantId              String
+  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reporterUserId        String
+  reporter              UserAccount @relation("ReportV2Reporter", fields: [reporterUserId], references: [id], onDelete: Cascade)
+  assignedSupervisorId  String?
+  assignedSupervisor    UserAccount? @relation("ReportV2Supervisor", fields: [assignedSupervisorId], references: [id], onDelete: SetNull)
+  assignedCleanerId     String?
+  assignedCleaner       UserAccount? @relation("ReportV2Cleaner", fields: [assignedCleanerId], references: [id], onDelete: SetNull)
+  title                 String
+  description           String?  @db.Text
+  locationLat           Float?
+  locationLng           Float?
+  locationAddress       String?
+  // submitted|assigned|accepted_by_cleaner|in_progress|resolved_by_cleaner|endorsed_by_supervisor|rejected_by_cleaner|rejected_by_supervisor|closed|cancelled
+  status                String   @default("submitted")
+  // low|medium|high
+  priority              String   @default("medium")
+  version               Int      @default(1)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  attachments           ReportAttachmentV2[]
+  events                ReportEventV2[]
+  notifications         NotificationV2[]
+
+  @@index([tenantId, reporterUserId, createdAt(sort: Desc)])
+  @@index([tenantId, assignedCleanerId, status])
+  @@index([tenantId, assignedSupervisorId, status])
+  @@index([tenantId, status, createdAt(sort: Desc)])
+}
+
+model ReportAttachmentV2 {
+  id              String   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reportId        String
+  report          ReportV2 @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  uploadedByUserId String
+  uploadedBy      UserAccount @relation("ReportAttachmentV2Uploader", fields: [uploadedByUserId], references: [id], onDelete: Cascade)
+  // report_evidence | cleaner_resolution_evidence | supervisor_review_evidence
+  attachmentType  String
+  fileUrl         String   @db.Text
+  fileMimeType    String?
+  fileSize        Int?
+  createdAt       DateTime @default(now())
+
+  @@index([tenantId, reportId])
+}
+
+model ReportEventV2 {
+  id            String   @id @default(cuid())
+  // Monotonic cursor used by /sync/events?since=. Globally unique;
+  // tenant filtering still applied at query time.
+  seq           Int      @unique @default(autoincrement())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reportId      String
+  report        ReportV2 @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  // report_created|report_assigned|cleaner_accepted_task|cleaner_rejected_task|cleaner_started_work|cleaner_submitted_resolution|supervisor_endorsed|supervisor_rejected|report_closed|report_cancelled
+  eventType     String
+  actorUserId   String?
+  actor         UserAccount? @relation("ReportEventV2Actor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  // reporter|supervisor|cleaner|admin|system
+  actorRole     String
+  payload       Json     @default("{}")
+  createdAt     DateTime @default(now())
+  notifications NotificationV2[]
+
+  @@index([tenantId, seq])
+  @@index([tenantId, reportId, createdAt(sort: Desc)])
+}
+
+// ---- Geo (campus boundary + landmarks, v2) --------------------------------
+// Powers: outside-campus warning on report creation, automatic landmark /
+// address association from GPS, and the public monitoring dashboard.
+
+model TenantGeoV2 {
+  tenantId    String   @id
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  displayName String
+  centerLat   Float
+  centerLng   Float
+  defaultZoom Int      @default(15)
+  // Polygon ring as [[lng, lat], ...] (GeoJSON coordinate order, open ring).
+  boundary    Json     @default("[]")
+  updatedAt   DateTime @updatedAt
+}
+
+model CampusLandmarkV2 {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  // building | residence | facility | landmark
+  category  String   @default("building")
+  lat       Float
+  lng       Float
+  // Association radius in meters for GPS -> landmark matching.
+  radiusM   Int      @default(200)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model NotificationV2 {
+  id         String    @id @default(cuid())
+  tenantId   String
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId     String
+  user       UserAccount @relation("NotificationV2User", fields: [userId], references: [id], onDelete: Cascade)
+  deviceId   String?
+  reportId   String?
+  report     ReportV2? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+  eventId    String?
+  event      ReportEventV2? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  title      String
+  body       String    @db.Text
+  isRead     Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  readAt     DateTime?
+
+  @@index([tenantId, userId, createdAt(sort: Desc)])
+  @@index([tenantId, userId, isRead])
+}

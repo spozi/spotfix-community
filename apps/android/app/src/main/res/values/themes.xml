@@ -1,0 +1,9 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Compose owns visual styling; this base theme just hands the activity over to Compose without flicker. -->
+    <style name="Theme.SpotFix" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#6366F1</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+    </style>
+</resources>

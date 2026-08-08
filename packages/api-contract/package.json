@@ -1,0 +1,19 @@
+{
+  "name": "@spotfix-community/api-contract",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed TypeScript SDK for the SpotFix Community API. Wire format mirrors the OpenAPI document generated from the API's zod schemas (see apps/api/src/openapi/registry.ts).",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}

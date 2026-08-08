@@ -1,0 +1,104 @@
+# Local development stack for SpotFix Community.
+# All images chosen here have official linux/arm64 builds so the same
+# compose file runs on Apple Silicon, x86 Linux, and Oracle Cloud Ampere A1.
+#
+# P3: Postgres + MinIO + API. Photos live in MinIO (S3-compatible).
+
+services:
+  postgres:
+    image: postgres:16.13-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: spotfix
+      POSTGRES_PASSWORD: spotfix
+      POSTGRES_DB: spotfix
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spotfix -d spotfix"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: spotfix
+      MINIO_ROOT_PASSWORD: spotfix-dev-secret
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 spotfix spotfix-dev-secret &&
+        mc mb --ignore-existing local/spotfix-photos &&
+        echo 'minio bucket ready'
+      "
+    restart: "no"
+
+  api:
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      PORT: "5001"
+      HOST: "0.0.0.0"
+      # P2: Postgres is the system of record.
+      DATABASE_URL: "postgresql://spotfix:spotfix@postgres:5432/spotfix?schema=public"
+      JWT_SECRET: "${JWT_SECRET:-local-compose-jwt-secret-2026-change-me-before-sharing-7d91b5c4f2a8}"
+      JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-12h}"
+      JWT_REFRESH_EXPIRES_IN: "${JWT_REFRESH_EXPIRES_IN:-30d}"
+      STORAGE_ENDPOINT: "http://minio:9000"
+      STORAGE_REGION: "us-east-1"
+      STORAGE_BUCKET: "spotfix-photos"
+      STORAGE_ACCESS_KEY: "spotfix"
+      STORAGE_SECRET_KEY: "spotfix-dev-secret"
+      STORAGE_FORCE_PATH_STYLE: "true"
+      # MinIO runs on the internal Docker network; the browser needs a reachable URL.
+      # Port 9000 is mapped to the host so localhost:9000 works from the browser.
+      STORAGE_PUBLIC_BASE_URL: "http://localhost:9000"
+      CORS_ALLOWED_ORIGINS: "*"
+      # Google Sign-In ID token verification (iOS + Web/Android Credential Manager client IDs).
+      GOOGLE_CLIENT_IDS: "${GOOGLE_CLIENT_IDS:-}"
+    ports:
+      - "5001:5001"
+
+  web:
+    build:
+      context: ../../apps/web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      API_BASE_URL: "http://localhost:5001/api/v1"
+      TENANT_SLUG: "example-campus"
+      GOOGLE_CLIENT_IDS: "${GOOGLE_CLIENT_IDS:-}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
+    ports:
+      - "4173:80"
+
+volumes:
+  postgres_data:
+  minio_data:

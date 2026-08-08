@@ -1,0 +1,20 @@
+{
+  "name": "spotfix-community",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source facility issue reporting and maintenance coordination.",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "api:dev": "npm --prefix apps/api run dev",
+    "api:typecheck": "npm --prefix apps/api run typecheck",
+    "api:test": "npm --prefix apps/api test",
+    "web:dev": "npm --prefix apps/web run dev",
+    "web:build": "npm --prefix apps/web run build",
+    "contract:typecheck": "npm --prefix packages/api-contract run typecheck",
+    "android:test": "cd apps/android && ./gradlew testDebugUnitTest",
+    "check:public": "./scripts/check-public-tree.sh",
+    "check": "npm run check:public && npm run api:typecheck && npm run api:test && npm run web:build && npm run contract:typecheck"
+  }
+}
