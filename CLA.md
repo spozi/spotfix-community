@@ -157,20 +157,15 @@ This appends a `Signed-off-by:` trailer asserting that you have the right to
 submit the work. The CLA establishes the licensing grant once; the DCO records
 per-commit provenance in Git history itself.
 
-## Before adopting this document
+## Effective date and status
 
-> **This section is a checklist for the maintainers and should be deleted once
-> the items are resolved.**
+This agreement takes effect on 13 September 2026, the date the Project Owner was
+named. Contributions merged before that date are covered by the Apache-2.0
+licence alone. Every such contribution is the Project Owner's own work, so no
+retroactive signatures are outstanding.
 
-This CLA is a draft modelled on widely used templates (the Apache Individual
-and Corporate CLAs, extended with the multi-licensing grant in Section A.1 that
+This CLA is modelled on widely used templates (the Apache Individual and
+Corporate CLAs, extended with the multi-licensing grant in Section A.1 that
 those templates omit). **It has not been reviewed by a lawyer.** Have counsel in
 your jurisdiction review it before you rely on it, particularly Section A.1 and
 Part B.
-
-Outstanding items:
-
-1. **Decide the effective date and handle work already merged.** Contributions
-   merged before this document takes effect are covered only by Apache-2.0. If
-   any external contributions already exist, collect retroactive signatures now,
-   while the contributor list is still small.
