@@ -137,9 +137,12 @@ Date:
 contact listed in `SECURITY.md`, together with the initial list of designated
 contributors.
 
-Maintainers record signatures before merging a first-time contributor's work. A
-pull request from an unsigned contributor will be held, not rejected — we will
-ask you to sign.
+Signatures are tracked manually while the contributor set is small: the signed
+comment on the pull request is itself the record, and maintainers verify it
+before merging a first-time contributor's work. A pull request from an unsigned
+contributor will be held, not rejected — we will ask you to sign. Should the
+volume of contributions outgrow manual checks, a CLA assistant bot that gates
+pull requests can take over the bookkeeping without changing the terms above.
 
 ## Developer Certificate of Origin
 
@@ -167,10 +170,7 @@ Part B.
 
 Outstanding items:
 
-1. **Choose an enforcement mechanism.** Manual tracking works at low volume; a
-   CLA assistant bot that gates pull requests scales better and keeps an
-   auditable record.
-2. **Decide the effective date and handle work already merged.** Contributions
+1. **Decide the effective date and handle work already merged.** Contributions
    merged before this document takes effect are covered only by Apache-2.0. If
    any external contributions already exist, collect retroactive signatures now,
    while the contributor list is still small.
