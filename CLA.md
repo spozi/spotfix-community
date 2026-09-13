@@ -6,10 +6,9 @@ under additional terms alongside the Apache-2.0 release — every contributor mu
 agree to this Contributor License Agreement (CLA) before their first
 contribution is merged.
 
-Throughout this document, **"the Project Owner"** means
-`[LEGAL ENTITY NAME — see "Before adopting this document" below]`, **"You"**
-means the individual or legal entity agreeing to these terms, and
-**"Contribution"** means any original work of authorship You intentionally
+Throughout this document, **"the Project Owner"** means Muhammad Syafiq Mohd
+Pozi, **"You"** means the individual or legal entity agreeing to these terms,
+and **"Contribution"** means any original work of authorship You intentionally
 submit to the Project Owner for inclusion in SpotFix Community, in any form and
 through any medium, including but not limited to pull requests, patches, issue
 attachments and electronic messages.
@@ -168,18 +167,10 @@ Part B.
 
 Outstanding items:
 
-1. **Name the Project Owner.** No legal entity or copyright holder is currently
-   declared anywhere in this repository. Decide whether the rights holder is an
-   individual, a company, or a foundation, then replace
-   `[LEGAL ENTITY NAME]` above. A CLA granting rights to an entity that does not
-   exist yet is not enforceable.
-2. **Fill in the `LICENSE` appendix and add a `NOTICE` file.** The Apache-2.0
-   text in `LICENSE` still carries the unfilled boilerplate appendix, so the
-   project asserts no copyright ownership at all today.
-3. **Choose an enforcement mechanism.** Manual tracking works at low volume; a
+1. **Choose an enforcement mechanism.** Manual tracking works at low volume; a
    CLA assistant bot that gates pull requests scales better and keeps an
    auditable record.
-4. **Decide the effective date and handle work already merged.** Contributions
+2. **Decide the effective date and handle work already merged.** Contributions
    merged before this document takes effect are covered only by Apache-2.0. If
    any external contributions already exist, collect retroactive signatures now,
    while the contributor list is still small.
